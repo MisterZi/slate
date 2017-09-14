@@ -1,239 +1,183 @@
 ---
-title: API Reference
+title: Руководство по работе с API check.inshopper.ru
 
-language_tabs: # must be one of https://git.io/vQNgJ
-  - shell
-  - ruby
-  - python
-  - javascript
-
-toc_footers:
-  - <a href='#'>Sign Up for a Developer Key</a>
-  - <a href='https://github.com/tripit/slate'>Documentation Powered by Slate</a>
-
-includes:
-  - errors
-
-search: true
+search: false
 ---
 
-# Introduction
+# Синтаксис запроса
 
-Welcome to the Kittn API! You can use our API to access Kittn API endpoints, which can get information on various cats, kittens, and breeds in our database.
+Чтобы обратиться к методу API check.inshopper.ru, Вам необходимо выполнить POST или GET запрос такого вида:
 
-We have language bindings in Shell, Ruby, and Python! You can view code examples in the dark area to the right, and you can switch the programming language of the examples with the tabs in the top right.
+`http://check.inshopper.ru/QUERY?token=TOKEN`
 
-This example API documentation page was created with [Slate](https://github.com/tripit/slate). Feel free to edit it and use it as a base for your own API's documentation.
+Он состоит из нескольких частей:
 
-# Authentication
+* QUERY (обязательно) — запрос, построенный в соответствии требованиями метода, к которому необходимо обратиться. Полный список методов доступен на этой странице.
+* TOKEN (опционально) — ключ доступа. Подробнее о получении токена Вы можете узнать в этом руководстве.
+* POST (опционально) - тело запроса. Используется в некоторых методах, например для загрузки файлов через API.
 
-> To authorize, use this code:
+# Ключ доступа
 
-```ruby
-require 'kittn'
+>  Пример для curl:
 
-api = Kittn::APIClient.authorize!('meowmeowmeow')
+```shell
+curl "http://check.inshopper.ru/clients/get_token.json"
+  --data "email=LOGIN&password=PASSWORD"
 ```
 
-```python
-import kittn
+> Пример ответа:
 
-api = kittn.authorize('meowmeowmeow')
+```shell
+{"token":"aHErLS5IfRWGagzaa90xJqdp1b4T2DG9z"}
+```
+
+Такой ключ требуется для работы почти со всеми методами нашего API, за исключением метода получения самого токена.
+
+Для того, чтобы получить код доступа необходимо выполнить запрос, в котором:
+
+`QUERY - get_token.json`
+
+`POST - email=LOGIN&password=PASSWORD`
+
+
+
+# Методы для обработки чеков
+
+## Загрузка чека
+
+`QUERY - campaigns/ID_акции/receipts.json`
+
+где `ID_акции` - идентификационный номер, присваиваемый акции при создании. Его можно получить в списке акций в личном кабинете.
+
+### С фотографией
+
+>  Пример для curl:
+
+```shell
+curl "http://check.inshopper.ru/campaigns/ID_акции/receipts.json?token=ТОКЕН"
+  -F "receipt[image]=@ПУТЬ_К_ФОТОГРАФИИ.jpg;type=image/jpg"
+```
+
+`POST - receipt[image]=ФОТО_ЧЕКА&receipt[external_id]=ИДЕНТИФИКАТОР_ПОЛЬЗОВАТЕЛЯ_В_БАНКЕ(опционально)`
+
+Формат файла изображения должен быть jpg, размер файла не должен превышать 10 МБ. Разрешение должно быть не меньше 600х600 пикселей.
+
+### С содержимым QR кода в чеках
+
+>  Пример для curl:
+
+```shell
+curl "http://check.inshopper.ru/campaigns/ID_акции/receipts.json?token=ТОКЕН"
+  --data "receipt[no_image]=true&receipt[qr_string]=QR_STRING&receipt[external_id]=EXTERNAL_ID"
+```
+
+`POST - receipt[no_image]=true&receipt[qr_string]=СОДЕРЖИМОЕ_QR_КОДА&receipt[external_id]=ИДЕНТИФИКАТОР_ПОЛЬЗОВАТЕЛЯ_В_БАНКЕ(опционально)`
+
+Формат содержимого QR кода должен быть:
+
+**t=**ггггммдд**T**ччмм**&s=**сумма**&fn=**фискальный-накопитель**&i=**фискальный-документ**&fp=**фискальный-признак-документа
+
+### Ответ сервера
+
+> Пример ответа:
+
+```shell
+# при успешной загрузке
+{"id":5,"state":"ok"}
 ```
 
 ```shell
-# With shell, you can just pass the correct header with each request
-curl "api_endpoint_here"
-  -H "Authorization: meowmeowmeow"
+# при ошибке
+{"state":"error"}
 ```
 
-```javascript
-const kittn = require('kittn');
+В обоих случаях, при успешной загрузке чека, ответ будет одинаковым:
 
-let api = kittn.authorize('meowmeowmeow');
-```
+`{"id":id-чека,"state":статус}`
 
-> Make sure to replace `meowmeowmeow` with your API key.
+Где id-чека - уникальный идентификатор, присвоенный чеку
 
-Kittn uses API keys to allow access to the API. You can register a new Kittn API key at our [developer portal](http://example.com/developers).
 
-Kittn expects for the API key to be included in all API requests to the server in a header that looks like the following:
 
-`Authorization: meowmeowmeow`
+## Проверка состояния чека
 
-<aside class="notice">
-You must replace <code>meowmeowmeow</code> with your personal API key.
-</aside>
-
-# Kittens
-
-## Get All Kittens
-
-```ruby
-require 'kittn'
-
-api = Kittn::APIClient.authorize!('meowmeowmeow')
-api.kittens.get
-```
-
-```python
-import kittn
-
-api = kittn.authorize('meowmeowmeow')
-api.kittens.get()
-```
+> Пример ответа:
 
 ```shell
-curl "http://example.com/api/kittens"
-  -H "Authorization: meowmeowmeow"
+{"id":5,"state":"unfilled", "extra": ""}
+state - статус чека
 ```
 
-```javascript
-const kittn = require('kittn');
+`QUERY - campaigns/ID_акции/receipts/ID_чека.json`
 
-let api = kittn.authorize('meowmeowmeow');
-let kittens = api.kittens.get();
-```
+В качестве параметра `ID_чека` отдаем id, полученный при загрузке чека.
 
-> The above command returns JSON structured like this:
 
-```json
-[
-  {
-    "id": 1,
-    "name": "Fluffums",
-    "breed": "calico",
-    "fluffiness": 6,
-    "cuteness": 7
-  },
-  {
-    "id": 2,
-    "name": "Max",
-    "breed": "unknown",
-    "fluffiness": 5,
-    "cuteness": 10
-  }
-]
-```
+### Типы состояний (state)
 
-This endpoint retrieves all kittens.
-
-### HTTP Request
-
-`GET http://example.com/api/kittens`
-
-### Query Parameters
-
-Parameter | Default | Description
---------- | ------- | -----------
-include_cats | false | If set to true, the result will also include cats.
-available | true | If set to false, the result will include kittens that have already been adopted.
-
-<aside class="success">
-Remember — a happy kitten is an authenticated kitten!
-</aside>
-
-## Get a Specific Kitten
-
-```ruby
-require 'kittn'
-
-api = Kittn::APIClient.authorize!('meowmeowmeow')
-api.kittens.get(2)
-```
-
-```python
-import kittn
-
-api = kittn.authorize('meowmeowmeow')
-api.kittens.get(2)
-```
-
-```shell
-curl "http://example.com/api/kittens/2"
-  -H "Authorization: meowmeowmeow"
-```
-
-```javascript
-const kittn = require('kittn');
-
-let api = kittn.authorize('meowmeowmeow');
-let max = api.kittens.get(2);
-```
-
-> The above command returns JSON structured like this:
-
-```json
-{
-  "id": 2,
-  "name": "Max",
-  "breed": "unknown",
-  "fluffiness": 5,
-  "cuteness": 10
-}
-```
-
-This endpoint retrieves a specific kitten.
-
-<aside class="warning">Inside HTML code blocks like this one, you can't use Markdown, so use <code>&lt;code&gt;</code> blocks to denote code.</aside>
-
-### HTTP Request
-
-`GET http://example.com/kittens/<ID>`
-
-### URL Parameters
-
-Parameter | Description
+Тип | Значение
 --------- | -----------
-ID | The ID of the kitten to retrieve
+good |  чек прошел проверку кпк, чек валиден
+processing |  чек отправлен на проверку кпк
+unfilled |  данные чека распознаются
+rejected |  чек отклонен
 
-## Delete a Specific Kitten
+При значении rejected появляется дополнительное поле reject_reason, которое может принимать значения:
 
-```ruby
-require 'kittn'
+### Типы отклонений (reject_reason):
 
-api = Kittn::APIClient.authorize!('meowmeowmeow')
-api.kittens.delete(2)
-```
-
-```python
-import kittn
-
-api = kittn.authorize('meowmeowmeow')
-api.kittens.delete(2)
-```
+> Пример ответа:
 
 ```shell
-curl "http://example.com/api/kittens/2"
-  -X DELETE
-  -H "Authorization: meowmeowmeow"
+{"id":11,"state":"rejected","extra":"","reject_reason":"undecipherable"}
+extra - дополнительные данные
 ```
 
-```javascript
-const kittn = require('kittn');
-
-let api = kittn.authorize('meowmeowmeow');
-let max = api.kittens.delete(2);
-```
-
-> The above command returns JSON structured like this:
-
-```json
-{
-  "id": 2,
-  "deleted" : ":("
-}
-```
-
-This endpoint retrieves a specific kitten.
-
-### HTTP Request
-
-`DELETE http://example.com/kittens/<ID>`
-
-### URL Parameters
-
-Parameter | Description
+Тип | Значение
 --------- | -----------
-ID | The ID of the kitten to delete
+undecipherable |  Неразборчив (нет возможности распознать данные)
+kpkless |  Не содержит КПК (бывает, что чеки не содрежат кпк, например, при оплате картой)
+clipped |  Чек сфотографирован не полностью
+nocheck |  Изображение некорректно, на фото не чек
+nocampaign |  В чеке нет акционных товаров
+wrongshop |  Магазин не участвует в акции
+wrongcircs |  Не выполнены условия акции
+notvalid |  Чек недействителен (для чеков с фотошопом, подделка на взгляд модератора)
+fewchecks |  Несколько чеков на фото
+oldchecks |  Слишком старый чек(дата покупки за пределами промо периода)
+invalidkpk |  Не валидный кпк(чек прошел проверку кпк)
+dublicate |  Чек является дубликатом
+outlimit |  Превышен лимит акции
+
+> Пример ответа:
+
+```shell
+{"id":5,"state":"good", "extra": {"quantity": "2"}}
+```
+
+Возможное содержимое extra:
+
+Quantity – количество по акционным товарам
+
+
+
+# Список активных акций пользователя
+
+> Пример для curl:
+
+```shell
+curl "http://check.inshopper.ru/campaigns.json?token=TOKEN&user_id=USER_ID"
+```
+
+`QUERY - campaigns.json?user_id=ID_ПОЛЬЗОВАТЕЛЯ`
+
+> Пример ответа:
+
+```shell
+{"campaigns":{"1":{"name":"Акция_1","limit":0,"logo_url":"no image","description":"Описание"},"2":{"name":"Акция_2","limit":10,"logo_url":"URL на картинку","description":"Описание"}}}
+Где name - название акции
+limit - лимит по количеству участий в этой акции
+logo_url - URL на картинку
+description - описание правил участия
+```
 
